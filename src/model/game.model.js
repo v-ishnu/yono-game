@@ -29,6 +29,20 @@ const gameSchema = new mongoose.Schema(
         answer: { type: String, required: true },
       },
     ],
+
+    contentSection:{
+      title: {
+        type: String,
+        trim: true
+      },
+      body: { type: String },
+      metaTitle: String,
+      metaDescr: String,
+      lastUpdate: {
+        type: Date,
+        default: Date.now
+      }
+    }
   },
   { timestamps: true }
 );

@@ -37,6 +37,7 @@ const updateGame = async (req, res, next) => {
             faqs,
             logoAlt,
             logoTitle,
+            logoUrl,
         } = req.body;
 
         // 🔹 Find existing game
@@ -106,6 +107,12 @@ const updateGame = async (req, res, next) => {
             const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
             const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
             updateData.logoUrl = `${baseUrl}${relativeUrl}`;
+        } else if (logoUrl && logoUrl !== game.logoUrl) {
+            // Delete the old local logo file if it is replaced by a different URL from Media Library
+            if (game.logoUrl) {
+                await deleteLocalFile(game.logoUrl);
+            }
+            updateData.logoUrl = logoUrl;
         }
 
         // 🔹 Update DB

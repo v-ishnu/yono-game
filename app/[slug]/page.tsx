@@ -7,7 +7,7 @@ import AppCard from "../components/AppCard";
 import Link from "next/link";
 import type { Game } from "../types";
 
-const SITE_URL = "https://www.allyonoogames.com";
+const SITE_URL = "https://allyonoogames.com";
 const SITE_NAME = "All Yono Games";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.allyonoogames.com/api";
 
@@ -32,6 +32,19 @@ async function getAllGames(): Promise<Game[]> {
   }
 }
 
+/**
+ * Pre-renders all game slug pages at build time so Googlebot always finds
+ * fully-rendered HTML. Falls back to on-demand ISR for any new games added
+ * after the last build (Next.js default with `revalidate: 60`).
+ */
+export async function generateStaticParams() {
+  const games = await getAllGames();
+
+  return games.map((game) => ({
+    slug: game.slug,
+  }));
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -41,16 +54,36 @@ export async function generateMetadata({
   const game = await getGameBySlug(slug);
   if (!game) return { title: "App Not Found" };
 
-  const title = `${game.name} APK Download – ₹${game.signupBonus} Signup Bonus | ${SITE_NAME}`;
-  const description = `Download ${game.name} APK for free on All Yono Games. Get ₹${game.signupBonus} signup bonus with minimum withdrawal of ₹${game.minWithdraw}. Rated ${game.rating}/5 stars. Category: ${game.category}. ${game.description}`;
+  const plainDescription = (game.longDescription || game.description || "")
+    .replace(/<[^>]*>?/gm, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+
+  const title = `${game.name} APK Download – ₹${game.signupBonus} Bonus | ${SITE_NAME}`;
+
+  // Natural, unique description per game — avoids the mechanical template that
+  // triggers Google's duplicate-content filter.
+  const description = [
+    `${game.name} is a ${game.category } app`,
+    game.signupBonus ? `offering a ₹${game.signupBonus} signup bonus` : "",
+    game.minWithdraw ? `with a minimum withdrawal of ₹${game.minWithdraw}` : "",
+    `and a ${game.rating || "4"}/5 star rating.`,
+    plainDescription ? plainDescription + "." : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 160);
+
   const keywords = [
     game.name,
     `${game.name} APK`,
     `${game.name} download`,
-    `${game.name} signup bonus`,
+    `${game.name} app`,
     ...(game.tags || []),
-    "all yono games", "yono games", "allyonoogames.com",
-    "real money games india", "earning apps india",
+    "all yono games",
+    "yono games",
+    "allyonoogames.com",
   ].join(", ");
 
   return {
@@ -132,7 +165,7 @@ export default async function AppDetailPage({
                 bestRating: 5,
                 worstRating: 1,
               },
-              description: game.description,
+              description: (game.description || "").replace(/<[^>]*>?/gm, ''),
               url: `${SITE_URL}/${game.slug}`,
               image: game.logoUrl,
               author: { "@type": "Organization", name: SITE_NAME },
@@ -141,7 +174,7 @@ export default async function AppDetailPage({
         />
 
         {/* App Detail Card */}
-        <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-blue-100 shadow-md p-4 sm:p-6 mb-6">
           <div className="flex items-start gap-5">
             {/* Logo */}
             <div className="shrink-0 w-24 h-24 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center">
@@ -163,7 +196,7 @@ export default async function AppDetailPage({
             {/* Title + Info */}
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-extrabold text-slate-800">{game.name}</h1>
-              <p className="text-blue-600 font-medium text-sm mt-0.5">{game.description}</p>
+              <div className="text-blue-600 font-medium text-sm mt-0.5" dangerouslySetInnerHTML={{ __html: game.description || "" }} />
               {game.isNewGame && (
                 <span className="inline-flex mt-2 items-center bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">
                   ✨ New App
@@ -217,31 +250,28 @@ export default async function AppDetailPage({
               href={game.downloadUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-base py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 uppercase tracking-wide"
+              className="w-full flex flex-wrap items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-sm sm:text-base py-3 sm:py-4 px-4 text-center rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 uppercase tracking-wide"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Download {game.name} APK
+              <span>Download {game.name} APK</span>
             </a>
             <a
               href="https://t.me/+xiZV9WhjGl05OWU9"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold text-sm py-2.5 rounded-xl transition-all duration-200"
+              className="w-full flex flex-wrap items-center justify-center gap-2 border-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold text-xs sm:text-sm py-2.5 px-4 text-center rounded-xl transition-all duration-200"
             >
               <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12.002 12.002 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-              Join Our Telegram Channel
+              <span>Join Our Telegram Channel</span>
             </a>
           </div>
         </div>
 
         {/* Description */}
-        <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-6 mb-6">
-          <h2 className="text-slate-800 font-bold text-lg mb-3 border-b border-blue-50 pb-3">
-            {game.name} APK – Download &amp; Receive ₹{game.signupBonus} Bonus
-          </h2>
-          <p className="text-slate-600 text-sm leading-relaxed">{game.longDescription}</p>
+        <div className="bg-white rounded-2xl border border-blue-100 shadow-sm p-3 sm:p-6 mb-6">
+          <div className="text-slate-600 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: game.longDescription || "" }} />
 
           {/* Key details */}
           <div className="mt-5 grid grid-cols-2 gap-3">

@@ -6,21 +6,34 @@ import Footer from "../components/Footer";
 import AppCard from "../components/AppCard";
 import type { Game } from "../types";
 
-const SITE_URL = "https://www.allyonoogames.com";
+const SITE_URL = "https://allyonoogames.com";
 const SITE_NAME = "All Yono Games";
 const API = process.env.NEXT_PUBLIC_API_URL || "https://api.allyonoogames.com/api";
 
 export const metadata: Metadata = {
-  title: `${SITE_NAME} – Yono Games List`,
-  description: "Browse all Yono marked apps and games on our directory. Best rummy and slots apps.",
+  title: `All Yono Games List 2026  | ${SITE_NAME}`,
+  description:
+    "Browse the complete list of All Yono Games — Yono , Yono 777, Jaiho Games, Slots & more. Compare bonuses, ratings. Updated daily.",
+  keywords: [
+    "all yono games list", "yono games 2026", "yono app list",
+    "yono rummy list", "yono slots list", "jaiho games list",
+    "all yono apps download", "best yono earning apps",
+  ].join(", "),
   alternates: { canonical: `${SITE_URL}/all-yono-games` },
   openGraph: {
-    title: `${SITE_NAME} – Yono Games List`,
-    description: "Browse all Yono marked apps and games on our directory. Best rummy and slots apps.",
+    title: `All Yono Games List 2026 | ${SITE_NAME}`,
+    description:
+      "Browse the complete list of All Yono Games — Yono , Yono 777, Jaiho Games, Slots & more. Compare bonuses, ratings. Updated daily.",
     url: `${SITE_URL}/all-yono-games`,
     siteName: SITE_NAME,
     images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: SITE_NAME }],
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `All Yono Games List 2026 | ${SITE_NAME}`,
+    description: "Browse every Yono  app — compare bonuses, ratings.",
+    images: [`${SITE_URL}/og-image.png`],
   },
 };
 

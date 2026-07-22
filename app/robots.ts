@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/_next/", "/static/"],
       },
     ],
-    sitemap: "https://www.allyonoogames.com/sitemap.xml",
-    host: "https://www.allyonoogames.com",
+    sitemap: "https://www.yonoworld.xyz/sitemap.xml",
+
   };
 }

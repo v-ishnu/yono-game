@@ -1,6 +1,8 @@
 "use client";
-import { useState, useRef } from "react";
-import { Upload, X, Plus } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, X, Plus, Image as ImageIcon } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchMedia } from "@/store/slices/mediaSlice";
 
 const CATEGORIES = ["Rummy", "Slots", "Casino", "Sports", "Arcade", "Other"];
 
@@ -22,6 +24,7 @@ export interface GameFormData {
   isFree: boolean;
   faqs?: unknown;
   logo?: File | null;
+  logoUrl?: string;
   logoAlt?: string;
   logoTitle?: string;
 }
@@ -41,6 +44,9 @@ export default function GameForm({
   loading,
   submitLabel = "Save Game",
 }: GameFormProps) {
+  const dispatch = useAppDispatch();
+  const { mediaList } = useAppSelector((s) => s.media);
+
   const [form, setForm] = useState<GameFormData>({
     name: "",
     slug: "",
@@ -57,12 +63,14 @@ export default function GameForm({
     isNewGame: false,
     isFree: true,
     logo: null,
+    logoUrl: "",
     logoAlt: "",
     logoTitle: "",
     ...initialData,
   });
 
   const [preview, setPreview] = useState<string | null>(existingLogoUrl || null);
+  const [logoMode, setLogoMode] = useState<"upload" | "media">("upload");
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>(
     initialData?.tags
@@ -77,6 +85,17 @@ export default function GameForm({
   const [descriptionTab, setDescriptionTab] = useState<"write" | "preview">("write");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    dispatch(fetchMedia());
+  }, [dispatch]);
+
+  // If there's an existing logo URL but no new file logo, we can start in "media" tab if it matches a media library item
+  useEffect(() => {
+    if (existingLogoUrl && !form.logo) {
+      setLogoMode("media");
+    }
+  }, [existingLogoUrl, form.logo]);
+
   const set = (field: keyof GameFormData, value: string | boolean | File | null) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
@@ -85,6 +104,7 @@ export default function GameForm({
     const file = e.target.files?.[0];
     if (!file) return;
     set("logo", file);
+    set("logoUrl", "");
     const url = URL.createObjectURL(file);
     setPreview(url);
   };
@@ -462,46 +482,180 @@ export default function GameForm({
 
       {/* Logo Upload */}
       <div className="card">
-        <h3 style={{ fontWeight: 600, marginBottom: 16, color: "var(--accent-peach)" }}>
-          Game Logo
+        <h3 style={{ fontWeight: 600, marginBottom: 16, color: "var(--accent-peach)", display: "flex", alignItems: "center", gap: 8 }}>
+          <ImageIcon size={18} /> Game Logo
         </h3>
-        <div
-          id="logo-upload-box"
-          className="upload-box"
-          onClick={() => fileRef.current?.click()}
-        >
-          {preview ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={preview}
-                alt="Preview"
-                style={{ width: 80, height: 80, borderRadius: 12, objectFit: "cover" }}
-              />
-              <p style={{ fontSize: 13, color: "var(--text-overlay)" }}>
-                Click to change logo
-              </p>
-            </div>
-          ) : (
-            <div>
-              <Upload size={32} color="var(--text-overlay)" style={{ margin: "0 auto 12px" }} />
-              <p style={{ fontSize: 14, color: "var(--text-overlay)" }}>
-                Click to upload game logo
-              </p>
-              <p style={{ fontSize: 12, color: "var(--bg-surface2)", marginTop: 4 }}>
-                PNG, JPG, WEBP up to 5MB
-              </p>
-            </div>
-          )}
+
+        {/* Mode Selector Tab */}
+        <div style={{ display: "flex", gap: 4, background: "var(--bg-mantle)", padding: 3, borderRadius: 8, border: "1px solid var(--bg-surface0)", marginBottom: 16 }}>
+          <button
+            type="button"
+            onClick={() => setLogoMode("upload")}
+            style={{
+              flex: 1,
+              padding: "6px 12px",
+              fontSize: 12,
+              fontWeight: 500,
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              background: logoMode === "upload" ? "var(--bg-surface0)" : "transparent",
+              color: logoMode === "upload" ? "var(--text-text)" : "var(--text-overlay)",
+              transition: "all 0.15s ease"
+            }}
+          >
+            Upload New Image
+          </button>
+          <button
+            type="button"
+            onClick={() => setLogoMode("media")}
+            style={{
+              flex: 1,
+              padding: "6px 12px",
+              fontSize: 12,
+              fontWeight: 500,
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              background: logoMode === "media" ? "var(--bg-surface0)" : "transparent",
+              color: logoMode === "media" ? "var(--text-text)" : "var(--text-overlay)",
+              transition: "all 0.15s ease"
+            }}
+          >
+            Choose from Media Library ({mediaList.length})
+          </button>
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          id="game-logo-input"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={handleLogoChange}
-        />
+
+        {logoMode === "upload" ? (
+          <div>
+            <div
+              id="logo-upload-box"
+              className="upload-box"
+              onClick={() => fileRef.current?.click()}
+            >
+              {preview && form.logo ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    style={{ width: 80, height: 80, borderRadius: 12, objectFit: "cover" }}
+                  />
+                  <p style={{ fontSize: 13, color: "var(--text-overlay)" }}>
+                    Click to change logo
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Upload size={32} color="var(--text-overlay)" style={{ margin: "0 auto 12px" }} />
+                  <p style={{ fontSize: 14, color: "var(--text-overlay)" }}>
+                    Click to upload game logo
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--bg-surface2)", marginTop: 4 }}>
+                    PNG, JPG, WEBP up to 5MB
+                  </p>
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              id="game-logo-input"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleLogoChange}
+            />
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            {mediaList.length === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--text-overlay)", textAlign: "center", padding: "20px 0" }}>
+                No media assets uploaded yet.
+              </p>
+            ) : (
+              <div>
+                <p style={{ fontSize: 12, color: "var(--text-overlay)", marginBottom: 8 }}>
+                  Select an image from library:
+                </p>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))",
+                  gap: 8,
+                  maxHeight: 180,
+                  overflowY: "auto",
+                  padding: 4,
+                  border: "1px solid var(--bg-surface0)",
+                  borderRadius: 8,
+                  background: "var(--bg-mantle)"
+                }}>
+                  {mediaList.map((media) => {
+                    const isSelected = form.logoUrl === media.url || (preview === media.url && !form.logo);
+                    return (
+                      <div
+                        key={media._id}
+                        onClick={() => {
+                          set("logo", null);
+                          set("logoUrl", media.url);
+                          set("logoAlt", media.alt);
+                          set("logoTitle", media.title);
+                          setPreview(media.url);
+                        }}
+                        style={{
+                          aspectRatio: "1/1",
+                          borderRadius: 8,
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          position: "relative",
+                          border: isSelected ? "2px solid var(--accent-purple)" : "2px solid transparent",
+                          transform: isSelected ? "scale(0.95)" : "none",
+                          transition: "all 0.15s ease",
+                          background: "var(--bg-crust)"
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={media.url}
+                          alt={media.alt}
+                          title={media.title}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {preview && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: "var(--bg-mantle)", padding: 10, borderRadius: 8, border: "1px solid var(--bg-surface0)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="Selected Logo" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 500, color: "var(--text-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Active Selection
+              </p>
+              <p style={{ fontSize: 11, color: "var(--text-overlay)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {form.logo ? `Local File: ${form.logo.name}` : `Media URL: ${form.logoUrl}`}
+              </p>
+            </div>
+            {(form.logo || form.logoUrl) && (
+              <button
+                type="button"
+                onClick={() => {
+                  set("logo", null);
+                  set("logoUrl", "");
+                  setPreview(null);
+                }}
+                style={{ background: "none", border: "none", color: "var(--accent-red)", cursor: "pointer", display: "flex", padding: 4 }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{ marginTop: 16 }}>
           <label className="label">Logo Alt Text (for SEO)</label>
           <input

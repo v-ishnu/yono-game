@@ -94,6 +94,7 @@ export default function EditGamePage() {
           isFree: game.isFree !== false,
           logoAlt: game.logoAlt || "",
           logoTitle: game.logoTitle || "",
+          logoUrl: game.logoUrl || "",
         }}
         existingLogoUrl={game.logoUrl}
         onSubmit={handleSubmit}

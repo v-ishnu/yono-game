@@ -31,10 +31,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://localhost:3000",
-      "http://localhost:3001",
-      "https://localhost:3001",
-      "https://www.allyonoogames.com",
+      "https://panel.allyonogamesstore.com",
+      "https://allyonogamesstore.com/"
     ],
     credentials: true,
     exposedHeaders: ["set-cookie"],

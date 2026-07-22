@@ -1,0 +1,133 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import api from "@/lib/api";
+
+export interface MediaItem {
+  _id: string;
+  url: string;
+  filename: string;
+  alt: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface MediaState {
+  mediaList: MediaItem[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: MediaState = {
+  mediaList: [],
+  loading: false,
+  error: null,
+};
+
+export const fetchMedia = createAsyncThunk(
+  "media/fetchAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("/media");
+      return res.data.data as MediaItem[];
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch media");
+    }
+  }
+);
+
+export const uploadMedia = createAsyncThunk(
+  "media/upload",
+  async (formData: FormData, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/media", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data.data as MediaItem;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to upload media");
+    }
+  }
+);
+
+export const updateMediaSeo = createAsyncThunk(
+  "media/updateSeo",
+  async ({ id, alt, title }: { id: string; alt: string; title: string }, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`/media/${id}`, { alt, title });
+      return res.data.data as MediaItem;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to update media SEO");
+    }
+  }
+);
+
+export const deleteMedia = createAsyncThunk(
+  "media/delete",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await api.delete(`/media/${id}`);
+      return id;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to delete media");
+    }
+  }
+);
+
+const mediaSlice = createSlice({
+  name: "media",
+  initialState,
+  reducers: {
+    clearMediaError(state) {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch
+      .addCase(fetchMedia.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchMedia.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mediaList = action.payload;
+      })
+      .addCase(fetchMedia.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Upload
+      .addCase(uploadMedia.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(uploadMedia.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mediaList.unshift(action.payload);
+      })
+      .addCase(uploadMedia.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update SEO
+      .addCase(updateMediaSeo.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(updateMediaSeo.fulfilled, (state, action) => {
+        state.loading = false;
+        const idx = state.mediaList.findIndex((m) => m._id === action.payload._id);
+        if (idx !== -1) {
+          state.mediaList[idx] = action.payload;
+        }
+      })
+      .addCase(updateMediaSeo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Delete
+      .addCase(deleteMedia.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(deleteMedia.fulfilled, (state, action) => {
+        state.loading = false;
+        state.mediaList = state.mediaList.filter((m) => m._id !== action.payload);
+      })
+      .addCase(deleteMedia.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+  },
+});
+
+export const { clearMediaError } = mediaSlice.actions;
+export default mediaSlice.reducer;

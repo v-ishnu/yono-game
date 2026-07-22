@@ -12,10 +12,18 @@ import updateGame from "../controller/updateGame.js";
 import { createContact, updateContact } from "../controller/contact.controller.js";
 
 import { upload } from "../config/cloudinary.config.js";
+import { getMedia, uploadMedia, updateMediaSeo, deleteMedia } from "../controller/media.controller.js";
 
 const router = express.Router();
 
 router.get("/get-all-game", getGames);
+
+// Media management routes
+router.get("/media", getMedia);
+router.post("/media", upload.single("file"), uploadMedia);
+router.patch("/media/:id", updateMediaSeo);
+router.delete("/media/:id", deleteMedia);
+
 router.get("/:slug", getGame);
 router.post("/create-game", upload.single("logo"), createGame);
 router.patch("/update-game", upload.single("logo"), updateGame);

@@ -1,5 +1,6 @@
 import Game from "../model/game.model.js";
 import slugify from "slugify";
+import { saveToFrontendUploads } from "../utils/localUpload.js";
 
 const generateUniqueSlug = async (name) => {
   let baseSlug = slugify(name, { lower: true, strict: true });
@@ -33,6 +34,8 @@ const createGame = async (req, res, next) => {
       isFree,
       relatedApps,
       faqs,
+      logoAlt,
+      logoTitle,
     } = req.body;
 
     // 🔹 Validation
@@ -51,7 +54,9 @@ const createGame = async (req, res, next) => {
     // 🔹 Handle file upload (also accept logoUrl from body for seeding)
     let logoUrl = req.body.logoUrl || "";
     if (req.file) {
-      logoUrl = req.file.path;
+      const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
+      const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
+      logoUrl = `${baseUrl}${relativeUrl}`;
     }
 
     let parsedTags = tags;
@@ -79,6 +84,8 @@ const createGame = async (req, res, next) => {
       slug: finalSlug,
       icon,
       logoUrl,
+      logoAlt,
+      logoTitle,
       category,
       rating,
       size,
@@ -102,10 +109,12 @@ const createGame = async (req, res, next) => {
     });
 
   } catch (err) {
+    console.error("Error creating game:", err);
     if (err.code === 11000) {
+      const field = Object.keys(err.keyValue || {}).join(", ") || "slug";
       return res.status(400).json({
         success: false,
-        message: "Game with this slug already exists",
+        message: `Game with this ${field} already exists`,
       });
     }
 

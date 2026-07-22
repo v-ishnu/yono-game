@@ -1,5 +1,6 @@
 import Game from "../model/game.model.js";
 import slugify from "slugify";
+import { saveToFrontendUploads, deleteLocalFile } from "../utils/localUpload.js";
 
 const generateUniqueSlug = async (name, excludeId) => {
     let baseSlug = slugify(name, { lower: true, strict: true });
@@ -34,6 +35,8 @@ const updateGame = async (req, res, next) => {
             isFree,
             relatedApps,
             faqs,
+            logoAlt,
+            logoTitle,
         } = req.body;
 
         // 🔹 Find existing game
@@ -62,6 +65,8 @@ const updateGame = async (req, res, next) => {
         if (isNewGame !== undefined) updateData.isNewGame = isNewGame;
         if (isFree !== undefined) updateData.isFree = isFree;
         if (relatedApps) updateData.relatedApps = relatedApps;
+        if (logoAlt !== undefined) updateData.logoAlt = logoAlt;
+        if (logoTitle !== undefined) updateData.logoTitle = logoTitle;
 
         // 🔹 Handle tags
         if (tags) {
@@ -94,7 +99,13 @@ const updateGame = async (req, res, next) => {
 
         // 🔹 Handle logo update
         if (req.file) {
-            updateData.logoUrl = req.file.path;
+            // Delete the old local logo file if it exists to prevent disk space leaks
+            if (game.logoUrl) {
+                await deleteLocalFile(game.logoUrl);
+            }
+            const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
+            const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
+            updateData.logoUrl = `${baseUrl}${relativeUrl}`;
         }
 
         // 🔹 Update DB
@@ -110,13 +121,14 @@ const updateGame = async (req, res, next) => {
         });
 
     } catch (err) {
+        console.error("Error updating game:", err);
         if (err.code === 11000) {
+            const field = Object.keys(err.keyValue || {}).join(", ") || "slug";
             return res.status(400).json({
                 success: false,
-                message: "Slug already exists",
+                message: `Game with this ${field} already exists`,
             });
         }
-
         next(err);
     }
 };

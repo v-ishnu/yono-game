@@ -1,4 +1,5 @@
 import Game from "../model/game.model.js";
+import { deleteLocalFile } from "../utils/localUpload.js";
 
 // GET all games
 export const getGames = async (req, res, next) => {
@@ -34,6 +35,10 @@ export const deleteGame = async (req, res, next) => {
     const game = await Game.findByIdAndDelete(id);
     if (!game) {
       return res.status(404).json({ success: false, message: "Game not found" });
+    }
+    // Delete the game logo file from disk if it's stored locally
+    if (game.logoUrl) {
+      await deleteLocalFile(game.logoUrl);
     }
     res.json({ success: true, message: "Game deleted successfully" });
   } catch (err) {

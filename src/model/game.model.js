@@ -6,6 +6,8 @@ const gameSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true, lowercase: true }, // already indexed
     icon: String,
     logoUrl: String,
+    logoAlt: { type: String, trim: true },
+    logoTitle: { type: String, trim: true },
     category: { type: String, index: true },
     rating: { type: Number, default: 0 },
     size: String,

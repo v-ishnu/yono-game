@@ -1,6 +1,6 @@
 import Game from "../model/game.model.js";
 import slugify from "slugify";
-import { saveToFrontendUploads, deleteLocalFile } from "../utils/localUpload.js";
+import { saveToFrontendUploads } from "../utils/localUpload.js";
 
 const generateUniqueSlug = async (name, excludeId) => {
     let baseSlug = slugify(name, { lower: true, strict: true });
@@ -100,18 +100,10 @@ const updateGame = async (req, res, next) => {
 
         // 🔹 Handle logo update
         if (req.file) {
-            // Delete the old local logo file if it exists to prevent disk space leaks
-            if (game.logoUrl) {
-                await deleteLocalFile(game.logoUrl);
-            }
             const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
             const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
             updateData.logoUrl = `${baseUrl}${relativeUrl}`;
-        } else if (logoUrl && logoUrl !== game.logoUrl) {
-            // Delete the old local logo file if it is replaced by a different URL from Media Library
-            if (game.logoUrl) {
-                await deleteLocalFile(game.logoUrl);
-            }
+        } else if (logoUrl) {
             updateData.logoUrl = logoUrl;
         }
 

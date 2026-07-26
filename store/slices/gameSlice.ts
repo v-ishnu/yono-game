@@ -4,6 +4,8 @@ import api from "@/lib/api";
 export interface Game {
   _id: string;
   name: string;
+  seoTitle?: string;
+  seoDescription?: string;
   slug: string;
   icon?: string;
   logoUrl?: string;
@@ -23,12 +25,19 @@ export interface Game {
   isFree?: boolean;
   relatedApps?: string[];
   createdAt?: string;
+  displayOrder?: number;
+  indexingStatus?: {
+    status: "pending" | "success" | "failed" | "not_indexed";
+    lastIndexedAt?: string;
+    message?: string;
+  };
 }
 
 interface GameState {
   games: Game[];
   selectedGame: Game | null;
   loading: boolean;
+  indexingPending: boolean;
   error: string | null;
   total: number;
 }
@@ -37,6 +46,7 @@ const initialState: GameState = {
   games: [],
   selectedGame: null,
   loading: false,
+  indexingPending: false,
   error: null,
   total: 0,
 };
@@ -101,6 +111,30 @@ export const deleteGame = createAsyncThunk(
       return id;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Failed to delete game");
+    }
+  }
+);
+
+export const indexGame = createAsyncThunk(
+  "game/indexSingle",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/index-game/${id}`);
+      return { game: res.data.data as Game, message: res.data.message };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to index game");
+    }
+  }
+);
+
+export const indexBulkGames = createAsyncThunk(
+  "game/indexBulk",
+  async (ids: string[], { rejectWithValue }) => {
+    try {
+      const res = await api.post("/index-games/bulk", { ids });
+      return { games: res.data.data as Game[], message: res.data.message };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed to perform bulk indexing");
     }
   }
 );
@@ -170,6 +204,35 @@ const gameSlice = createSlice({
       })
       .addCase(deleteGame.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Single Indexing
+      .addCase(indexGame.pending, (state) => { state.indexingPending = true; state.error = null; })
+      .addCase(indexGame.fulfilled, (state, action) => {
+        state.indexingPending = false;
+        const updated = action.payload.game;
+        const idx = state.games.findIndex((g) => g._id === updated._id);
+        if (idx !== -1) state.games[idx] = updated;
+        if (state.selectedGame?._id === updated._id) state.selectedGame = updated;
+      })
+      .addCase(indexGame.rejected, (state, action) => {
+        state.indexingPending = false;
+        state.error = action.payload as string;
+      })
+
+      // Bulk Indexing
+      .addCase(indexBulkGames.pending, (state) => { state.indexingPending = true; state.error = null; })
+      .addCase(indexBulkGames.fulfilled, (state, action) => {
+        state.indexingPending = false;
+        action.payload.games.forEach((updated) => {
+          const idx = state.games.findIndex((g) => g._id === updated._id);
+          if (idx !== -1) state.games[idx] = updated;
+          if (state.selectedGame?._id === updated._id) state.selectedGame = updated;
+        });
+      })
+      .addCase(indexBulkGames.rejected, (state, action) => {
+        state.indexingPending = false;
         state.error = action.payload as string;
       });
   },

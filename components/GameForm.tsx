@@ -9,6 +9,8 @@ const CATEGORIES = ["Rummy", "Slots", "Casino", "Sports", "Arcade", "Other"];
 export interface GameFormData {
   id?: string;
   name: string;
+  seoTitle?: string;
+  seoDescription?: string;
   slug: string;
   icon: string;
   category: string;
@@ -49,6 +51,8 @@ export default function GameForm({
 
   const [form, setForm] = useState<GameFormData>({
     name: "",
+    seoTitle: "",
+    seoDescription: "",
     slug: "",
     icon: "",
     category: "",
@@ -290,6 +294,59 @@ export default function GameForm({
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* SEO Settings */}
+      <div className="card">
+        <h3 style={{ fontWeight: 600, marginBottom: 8, color: "var(--accent-teal, #94e2d5)", display: "flex", alignItems: "center", gap: 8 }}>
+          🔍 Search Engine Optimization (SEO)
+        </h3>
+        <p style={{ fontSize: 13, color: "var(--text-overlay)", marginBottom: 16 }}>
+          Configure custom meta title and description for search engine ranking. If left blank, the system automatically uses fallback values.
+        </p>
+
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <label className="label" style={{ margin: 0 }}>SEO Meta Title</label>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: (form.seoTitle?.length || 0) > 60 ? "var(--accent-red)" : "var(--text-overlay)"
+            }}>
+              {form.seoTitle?.length || 0} / 60
+            </span>
+          </div>
+          <input
+            id="game-seo-title"
+            className="input"
+            maxLength={60}
+            placeholder="e.g. Download Yono Rummy APK - Play Real Cash Rummy Games"
+            value={form.seoTitle || ""}
+            onChange={(e) => set("seoTitle", e.target.value)}
+          />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <label className="label" style={{ margin: 0 }}>SEO Meta Description</label>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: (form.seoDescription?.length || 0) > 160 ? "var(--accent-red)" : "var(--text-overlay)"
+            }}>
+              {form.seoDescription?.length || 0} / 160
+            </span>
+          </div>
+          <textarea
+            id="game-seo-description"
+            className="textarea"
+            maxLength={160}
+            placeholder="e.g. Download Yono Rummy App and get ₹500 signup bonus. Instant withdrawal to bank account..."
+            value={form.seoDescription || ""}
+            onChange={(e) => set("seoDescription", e.target.value)}
+            style={{ minHeight: 70 }}
+          />
         </div>
       </div>
 

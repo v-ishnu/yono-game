@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@/lib/api";
+import { createGame, updateGame } from "@/store/slices/gameSlice";
 
 export interface MediaItem {
   _id: string;
@@ -97,7 +98,10 @@ const mediaSlice = createSlice({
       .addCase(uploadMedia.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(uploadMedia.fulfilled, (state, action) => {
         state.loading = false;
-        state.mediaList.unshift(action.payload);
+        const exists = state.mediaList.some((m) => m._id === action.payload._id || m.url === action.payload.url);
+        if (!exists) {
+          state.mediaList.unshift(action.payload);
+        }
       })
       .addCase(uploadMedia.rejected, (state, action) => {
         state.loading = false;
@@ -117,7 +121,7 @@ const mediaSlice = createSlice({
         state.error = action.payload as string;
       })
       // Delete
-      .addCase(deleteMedia.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(deleteMedia.pending, (state) => { state.loading = true; })
       .addCase(deleteMedia.fulfilled, (state, action) => {
         state.loading = false;
         state.mediaList = state.mediaList.filter((m) => m._id !== action.payload);
@@ -125,6 +129,39 @@ const mediaSlice = createSlice({
       .addCase(deleteMedia.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // Live updates when logos are uploaded via Game creation or update
+      .addCase(createGame.fulfilled, (state, action) => {
+        if (action.payload?.logoUrl) {
+          const exists = state.mediaList.some((m) => m.url === action.payload.logoUrl);
+          if (!exists) {
+            const filename = action.payload.logoUrl.split("/").pop() || "logo";
+            state.mediaList.unshift({
+              _id: action.payload._id + "_logo",
+              url: action.payload.logoUrl,
+              filename,
+              alt: action.payload.logoAlt || "",
+              title: action.payload.logoTitle || "",
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      })
+      .addCase(updateGame.fulfilled, (state, action) => {
+        if (action.payload?.logoUrl) {
+          const exists = state.mediaList.some((m) => m.url === action.payload.logoUrl);
+          if (!exists) {
+            const filename = action.payload.logoUrl.split("/").pop() || "logo";
+            state.mediaList.unshift({
+              _id: action.payload._id + "_logo",
+              url: action.payload.logoUrl,
+              filename,
+              alt: action.payload.logoAlt || "",
+              title: action.payload.logoTitle || "",
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
       });
   },
 });

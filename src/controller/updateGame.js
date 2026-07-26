@@ -68,6 +68,8 @@ const updateGame = async (req, res, next) => {
         if (relatedApps) updateData.relatedApps = relatedApps;
         if (logoAlt !== undefined) updateData.logoAlt = logoAlt;
         if (logoTitle !== undefined) updateData.logoTitle = logoTitle;
+        if (seoTitle !== undefined) updateData.seoTitle = seoTitle;
+        if (seoDescription !== undefined) updateData.seoDescription = seoDescription;
 
         // 🔹 Handle tags
         if (tags) {
@@ -100,7 +102,7 @@ const updateGame = async (req, res, next) => {
 
         // 🔹 Handle logo update
         if (req.file) {
-            const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
+            const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname, req);
             const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
             updateData.logoUrl = `${baseUrl}${relativeUrl}`;
         } else if (logoUrl) {

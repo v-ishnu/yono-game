@@ -2,11 +2,66 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import slugify from "slugify";
+import Media from "../model/media.model.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const saveToFrontendUploads = async (fileBuffer, originalName) => {
+export const getMimeType = (ext) => {
+  const mimes = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".bmp": "image/bmp",
+    ".tiff": "image/tiff",
+    ".ico": "image/x-icon",
+  };
+  return mimes[ext] || "application/octet-stream";
+};
+
+/**
+ * Creates or retrieves a Media document in MongoDB for an uploaded file.
+ * Prevents duplicate records by checking both full URL and filename.
+ */
+export const createOrGetMediaRecord = async ({
+  filename,
+  relativeUrl,
+  req,
+  fileBuffer,
+  mimetype,
+  alt = "",
+  title = "",
+}) => {
+  const baseUrl = process.env.BACKEND_URL || (req ? `${req.protocol}://${req.get("host")}` : "");
+  const url = relativeUrl.startsWith("http") ? relativeUrl : `${baseUrl}${relativeUrl}`;
+  const size = fileBuffer ? fileBuffer.length : (req?.file?.size || 0);
+  const ext = path.extname(filename).toLowerCase();
+  const mimeType = mimetype || req?.file?.mimetype || getMimeType(ext);
+
+  // Extract alt and title from options or req.body (checking logoAlt / logoTitle as fallbacks)
+  const finalAlt = alt || req?.body?.alt || req?.body?.logoAlt || "";
+  const finalTitle = title || req?.body?.title || req?.body?.logoTitle || "";
+
+  // Check if Media record already exists by url OR filename to prevent duplicate entries
+  let media = await Media.findOne({ $or: [{ url }, { filename }] });
+  if (!media) {
+    media = await Media.create({
+      url,
+      filename,
+      alt: finalAlt,
+      title: finalTitle,
+      size,
+      mimeType,
+    });
+    console.log(`🖼️ Created Media record for: ${filename}`);
+  }
+  return media;
+};
+
+export const saveToFrontendUploads = async (fileBuffer, originalName, req, options = {}) => {
   const ext = path.extname(originalName).toLowerCase();
   const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tiff", ".ico"];
 
@@ -39,7 +94,24 @@ export const saveToFrontendUploads = async (fileBuffer, originalName) => {
 
   await fs.promises.writeFile(filePath, fileBuffer);
 
-  return `/upload/${filename}`;
+  const relativeUrl = `/upload/${filename}`;
+
+  // Save/ensure Media database record for every uploaded image
+  try {
+    await createOrGetMediaRecord({
+      filename,
+      relativeUrl,
+      req,
+      fileBuffer,
+      mimetype: req?.file?.mimetype || options.mimetype,
+      alt: options.alt,
+      title: options.title,
+    });
+  } catch (dbErr) {
+    console.error("🚨 Failed to save Media record:", dbErr);
+  }
+
+  return relativeUrl;
 };
 
 export const deleteLocalFile = async (url) => {

@@ -6,6 +6,8 @@ const mediaSchema = new mongoose.Schema(
     filename: { type: String, required: true },
     alt: { type: String, default: "" },
     title: { type: String, default: "" },
+    size: { type: Number },
+    mimeType: { type: String },
   },
   { timestamps: true }
 );

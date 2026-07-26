@@ -19,6 +19,8 @@ const createGame = async (req, res, next) => {
   try {
     const {
       name,
+      seoTitle,
+      seoDescription,
       slug,
       icon,
       category,
@@ -54,7 +56,7 @@ const createGame = async (req, res, next) => {
     // 🔹 Handle file upload (also accept logoUrl from body for seeding)
     let logoUrl = req.body.logoUrl || "";
     if (req.file) {
-      const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname);
+      const relativeUrl = await saveToFrontendUploads(req.file.buffer, req.file.originalname, req);
       const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
       logoUrl = `${baseUrl}${relativeUrl}`;
     }
@@ -81,6 +83,8 @@ const createGame = async (req, res, next) => {
     // 🔹 Create object explicitly
     const gameData = {
       name,
+      seoTitle,
+      seoDescription,
       slug: finalSlug,
       icon,
       logoUrl,

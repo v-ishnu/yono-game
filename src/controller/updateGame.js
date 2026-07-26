@@ -20,6 +20,8 @@ const updateGame = async (req, res, next) => {
         const {
             id,
             name,
+            seoTitle,
+            seoDescription,
             slug,
             icon,
             category,

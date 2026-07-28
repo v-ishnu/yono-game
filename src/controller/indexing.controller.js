@@ -26,26 +26,37 @@ export const indexSingleGame = async (req, res, next) => {
       };
       await game.save();
 
-      return res.status(200).json({
+      const successResponse = {
         success: true,
         message: `Game "${game.name}" submitted for Instant Indexing successfully!`,
         data: game,
-      });
+      };
+      if (result.warning) successResponse.warning = result.warning;
+
+      return res.status(200).json(successResponse);
     } catch (indexErr) {
       console.error(`🚨 Google Indexing failed for game "${game.name}":`, indexErr.message || indexErr);
+
+      const safeMessage = indexErr.errorCode
+        ? indexErr.message
+        : "Failed to submit for Instant Indexing";
 
       game.indexingStatus = {
         status: "failed",
         lastIndexedAt: new Date(),
-        message: indexErr.message || "Failed to index game with Google API",
+        message: safeMessage,
       };
       await game.save();
 
-      return res.status(400).json({
+      const errorResponse = {
         success: false,
-        message: indexErr.message || "Failed to submit for Instant Indexing",
+        message: safeMessage,
         data: game,
-      });
+      };
+      if (indexErr.errorCode) errorResponse.errorCode = indexErr.errorCode;
+      if (indexErr.googleError) errorResponse.googleError = indexErr.googleError;
+
+      return res.status(400).json(errorResponse);
     }
   } catch (err) {
     next(err);
@@ -82,13 +93,25 @@ export const indexBulkGames = async (req, res, next) => {
         updatedGames.push(game);
       } catch (indexErr) {
         console.error(`🚨 Bulk Indexing failed for "${game.name}":`, indexErr.message || indexErr);
+
+        const safeMessage = indexErr.errorCode
+          ? indexErr.message
+          : "Failed to index game";
+
         game.indexingStatus = {
           status: "failed",
           lastIndexedAt: new Date(),
-          message: indexErr.message || "Failed to index game",
+          message: safeMessage,
         };
         await game.save();
-        results.push({ id: game._id, name: game.name, success: false, error: indexErr.message });
+        results.push({
+          id: game._id,
+          name: game.name,
+          success: false,
+          error: safeMessage,
+          ...(indexErr.errorCode && { errorCode: indexErr.errorCode }),
+          ...(indexErr.googleError && { googleError: indexErr.googleError }),
+        });
         updatedGames.push(game);
       }
     }
